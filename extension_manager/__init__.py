@@ -1,78 +1,117 @@
 """
-Extension Manager for Open WebUI
+Extension Manager for Open WebUI.
 
-This extension provides a UI for managing Open WebUI extensions.
+This module provides a management interface for Open WebUI extensions.
 """
 
 import os
-import sys
 import logging
-from fastapi import APIRouter, FastAPI
-from starlette.staticfiles import StaticFiles
+from typing import Dict, Any, Optional, Callable
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 logger = logging.getLogger("extension_manager")
 
-# Extension metadata
-__id__ = "extension_manager"
-__name__ = "Extension Manager"
-__description__ = "Manage Open WebUI extensions"
+# Import API router
+from .backend.api import get_router
+from .backend.registry import registry
+
+# Initialize the extension manager
+def initialize(config: Optional[Dict[str, Any]] = None) -> bool:
+    """Initialize the extension manager.
+    
+    Args:
+        config: Configuration for the extension manager.
+        
+    Returns:
+        True if initialization was successful, False otherwise.
+    """
+    try:
+        # Set up extension directory from config
+        extensions_dir = config.get("extensions_dir") if config else None
+        registry_config = config.get("registry_config") if config else None
+        
+        # Initialize the registry
+        registry = initialize_registry(extensions_dir, registry_config)
+        
+        # Discover installed extensions
+        extensions = registry.discover()
+        logger.info(f"Discovered {len(extensions)} extensions")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error initializing extension manager: {e}")
+        return False
+
+def initialize_registry(extensions_dir: Optional[str] = None, registry_config: Optional[str] = None) -> Any:
+    """Initialize the extension registry.
+    
+    Args:
+        extensions_dir: The directory containing extensions.
+        registry_config: The path to the registry configuration file.
+        
+    Returns:
+        The initialized registry.
+    """
+    try:
+        # Set default extensions directory if not provided
+        if not extensions_dir:
+            extensions_dir = os.environ.get("EXTENSIONS_DIR", "./extensions")
+        
+        # Initialize the registry
+        from .backend.registry import registry
+        registry.__init__(extensions_dir, registry_config)
+        
+        return registry
+    except Exception as e:
+        logger.error(f"Error initializing extension registry: {e}")
+        raise
+
+def get_api_router() -> Any:
+    """Get the API router for the extension manager.
+    
+    Returns:
+        The API router.
+    """
+    return get_router()
+
+def register_with_app(app: Any, prefix: str = "/api/extensions") -> bool:
+    """Register the extension manager with a FastAPI application.
+    
+    Args:
+        app: The FastAPI application.
+        prefix: The URL prefix for the extension manager API.
+        
+    Returns:
+        True if registration was successful, False otherwise.
+    """
+    try:
+        # Get the API router
+        router = get_api_router()
+        
+        # Include the router in the application
+        app.include_router(router, prefix=prefix)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error registering extension manager with app: {e}")
+        return False
+
+def get_ui_mount_points() -> Dict[str, Callable]:
+    """Get UI mount points for the extension manager.
+    
+    Returns:
+        A dictionary mapping mount point names to renderer functions.
+    """
+    try:
+        from .frontend import get_mount_points
+        return get_mount_points()
+    except Exception as e:
+        logger.error(f"Error getting UI mount points: {e}")
+        return {}
+
 __version__ = "0.1.0"
-__author__ = "Open WebUI Team"
-
-# Create router
-router = APIRouter(prefix="/api/extensions", tags=["extensions"])
-
-def get_router():
-    """Get the extension's API router."""
-    # Import extension API
-    from .backend.api import setup_routes
-    
-    # Set up routes
-    setup_routes(router)
-    
-    return router
-
-def on_startup(app: FastAPI):
-    """Called when the extension starts up."""
-    logger.info("Extension Manager is starting up")
-    
-    # Register static files
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    if os.path.exists(static_dir):
-        app.mount(
-            "/extensions/extension_manager/static",
-            StaticFiles(directory=static_dir),
-            name="extension_manager_static"
-        )
-        
-        logger.info(f"Mounted static files at /extensions/extension_manager/static")
-    
-    # Add script to inject UI components
-    @app.middleware("http")
-    async def add_extension_manager_script(request, call_next):
-        response = await call_next(request)
-        
-        # Only modify HTML responses for non-API requests
-        if (response.headers.get("content-type", "").startswith("text/html") and
-            not request.url.path.startswith("/api/")):
-            # Get response body
-            body = b""
-            async for chunk in response.body_iterator:
-                body += chunk
-            
-            # Add our script before </body>
-            script_tag = f'<script src="/extensions/extension_manager/static/extension_manager.js"></script></body>'
-            modified_body = body.replace(b"</body>", script_tag.encode())
-            
-            # Create new response with modified body
-            from starlette.responses import Response
-            return Response(
-                content=modified_body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type=response.media_type
-            )
-        
-        return response
