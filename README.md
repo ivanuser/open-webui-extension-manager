@@ -1,55 +1,77 @@
 # Open WebUI Extension System
 
-The Open WebUI Extension System provides a comprehensive framework for creating, installing, and managing extensions for Open WebUI. This system allows developers to enhance Open WebUI with new features, integrations, and capabilities.
+A comprehensive extension system for Open WebUI that allows developers to create custom extensions to enhance functionality.
 
-## Key Features
+## Features
 
-- **Extension Manager**: User-friendly interface for installing, configuring, and managing extensions
-- **Extension Framework**: Standardized framework for creating different types of extensions
-- **Integrated API**: Seamless integration with Open WebUI's core features
-- **MCP Connector**: Example extension for connecting to Model Context Protocol (MCP) servers
+- **Extension Manager**: Admin interface for managing extensions
+- **Extension Framework**: Core libraries and interfaces for extension development
+- **Extension Registry**: System for discovering and loading extensions
+- **Extension API**: Standard interfaces for extensions to integrate with Open WebUI
 
 ## Installation
 
-### Quick Install (Recommended)
+### Option 1: Automatic Installation
 
 ```bash
-# Install the Extension Manager directly from GitHub
-curl -sSL https://raw.githubusercontent.com/open-webui/extensions/main/install.sh | bash
+# Clone the repository
+git clone https://github.com/open-webui/extension-manager.git
+cd extension-manager
+
+# Run the installer
+python install.py
 ```
 
-### Manual Installation
+### Option 2: Manual Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/open-webui/extensions.git
-   cd extensions
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/open-webui/extension-manager.git
+cd extension-manager
 
-2. Run the installation script:
-   ```bash
-   python install.py
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-3. Restart Open WebUI to apply changes
+# Install as an editable package
+pip install -e .
 
-## Using the Extension Manager
+# Copy or symlink the extension_manager directory to your Open WebUI installation
+ln -s $(pwd)/extension_manager /path/to/open-webui/extensions/manager
+```
 
-After installation, restart Open WebUI and access the Extension Manager:
+## Usage
 
-1. Log in to Open WebUI
-2. Go to Admin > Extensions
-3. Use the interface to manage your extensions
+After installation, the Extension Manager will be available in the Admin Settings of Open WebUI.
+
+### Managing Extensions
+
+- **View Extensions**: See all installed extensions
+- **Enable/Disable**: Toggle extensions on or off
+- **Install Extensions**: Add new extensions from various sources
+- **Configure Extensions**: Adjust settings for installed extensions
+- **Uninstall Extensions**: Remove extensions from the system
 
 ## Creating Extensions
 
-See [Creating Extensions](docs/creating_extensions.md) for a detailed guide.
+See [Creating Extensions](docs/creating_extensions.md) for a detailed guide on how to create your own extensions.
+
+## Extension Types
+
+- **UI Extensions**: Add new UI components
+- **API Extensions**: Add new API endpoints
+- **Model Adapters**: Integrate new AI models
+- **Tool Extensions**: Add new tools or capabilities
+- **Theme Extensions**: Customize the appearance
 
 ## Documentation
 
-- [Extension Manager Guide](docs/extension_manager.md)
 - [Creating Extensions](docs/creating_extensions.md)
-- [Extension API Reference](docs/extension_api.md)
+- [Extension API](docs/extension_api.md)
+- [Extension Manager](docs/extension_manager.md)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
