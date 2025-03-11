@@ -2,226 +2,205 @@
 Base classes for Open WebUI extensions.
 """
 
+from abc import ABC, abstractmethod
+from typing import Dict, List, Any, Optional, Callable, Type
+import inspect
 import os
-import json
 import logging
-from typing import Any, Dict, List, Optional, Type, TypeVar
-from pathlib import Path
 
-from fastapi import APIRouter, FastAPI
-from pydantic import BaseModel
+logger = logging.getLogger("extension_framework")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("open_webui.extensions")
-
-# Type definitions
-T = TypeVar('T')
-
-
-class ExtensionMetadata(BaseModel):
-    """Metadata for an extension."""
-    id: str
-    name: str
-    description: str
-    version: str
-    author: str
-    author_url: Optional[str] = None
-    repository_url: Optional[str] = None
-    license: Optional[str] = None
-    tags: List[str] = []
-    requires: List[str] = []
-
-
-class ExtensionContext:
-    """Context for an extension."""
-    def __init__(self, extension_id: str, extension_path: str):
-        self.id = extension_id
-        self.path = extension_path
-        self.static_path = os.path.join(extension_path, "static")
-        self.config_path = os.path.join(extension_path, "config")
-        self.data_path = os.path.join(extension_path, "data")
-        self.temp_path = os.path.join(extension_path, "temp")
-        
-        # Create directories
-        os.makedirs(self.static_path, exist_ok=True)
-        os.makedirs(self.config_path, exist_ok=True)
-        os.makedirs(self.data_path, exist_ok=True)
-        os.makedirs(self.temp_path, exist_ok=True)
-        
-        # Config cache
-        self._config_cache = {}
+class Extension(ABC):
+    """Base class for all extensions."""
     
-    def get_config(self, name: str = "config") -> Dict[str, Any]:
-        """Get a configuration file."""
-        if name in self._config_cache:
-            return self._config_cache[name]
-        
-        config_file = os.path.join(self.config_path, f"{name}.json")
-        if os.path.exists(config_file):
-            try:
-                with open(config_file, "r") as f:
-                    config = json.load(f)
-                    self._config_cache[name] = config
-                    return config
-            except Exception as e:
-                logger.error(f"Error loading config {name}: {e}")
-                return {}
-        else:
-            return {}
-    
-    def save_config(self, config: Dict[str, Any], name: str = "config") -> bool:
-        """Save a configuration file."""
-        try:
-            config_file = os.path.join(self.config_path, f"{name}.json")
-            with open(config_file, "w") as f:
-                json.dump(config, f, indent=2)
-            self._config_cache[name] = config
-            return True
-        except Exception as e:
-            logger.error(f"Error saving config {name}: {e}")
-            return False
-    
-    def get_static_url(self, path: str) -> str:
-        """Get the URL for a static file."""
-        return f"/extensions/{self.id}/static/{path}"
-
-
-class BaseExtension:
-    """Base class for extensions."""
-    
-    # Class variables
-    id: str = None
-    name: str = None
-    description: str = None
-    version: str = "0.1.0"
-    author: str = None
-    author_url: Optional[str] = None
-    repository_url: Optional[str] = None
-    license: Optional[str] = None
-    tags: List[str] = []
-    requires: List[str] = []
-    
-    def __init__(self, context: ExtensionContext):
-        """Initialize the extension."""
-        if not self.id:
-            raise ValueError("Extension ID is required")
-        
-        self.context = context
-        self.router = APIRouter(prefix=f"/api/ext/{self.id}", tags=[self.id])
-        self.logger = logging.getLogger(f"open_webui.extensions.{self.id}")
-    
-    def get_metadata(self) -> ExtensionMetadata:
-        """Get the extension metadata."""
-        return ExtensionMetadata(
-            id=self.id,
-            name=self.name or self.id,
-            description=self.description or "",
-            version=self.version,
-            author=self.author or "Unknown",
-            author_url=self.author_url,
-            repository_url=self.repository_url,
-            license=self.license,
-            tags=self.tags,
-            requires=self.requires
-        )
-    
-    def get_router(self) -> APIRouter:
-        """Get the API router."""
-        return self.router
-    
-    async def on_startup(self, app: FastAPI) -> None:
-        """Called when the extension starts up."""
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """The name of the extension."""
         pass
     
-    async def on_shutdown(self, app: FastAPI) -> None:
-        """Called when the extension shuts down."""
+    @property
+    @abstractmethod
+    def version(self) -> str:
+        """The version of the extension."""
         pass
     
-    async def register_routes(self, app: FastAPI) -> None:
-        """Register API routes with the application."""
-        app.include_router(self.router)
-    
-    async def register_ui(self, app: FastAPI) -> None:
-        """Register UI components with the application."""
+    @property
+    @abstractmethod
+    def description(self) -> str:
+        """A description of what the extension does."""
         pass
-
-
-class UIExtension(BaseExtension):
-    """Extension that provides UI components."""
     
-    # UI component entry points
-    admin_page: Optional[Dict[str, str]] = None
-    sidebar_items: List[Dict[str, str]] = []
-    settings_sections: List[Dict[str, str]] = []
+    @property
+    @abstractmethod
+    def author(self) -> str:
+        """The author(s) of the extension."""
+        pass
     
-    async def register_ui(self, app: FastAPI) -> None:
-        """Register UI components with the application."""
-        await super().register_ui(app)
+    @property
+    def dependencies(self) -> List[str]:
+        """List of other extensions this extension depends on."""
+        return []
+    
+    @property
+    def type(self) -> str:
+        """The type of extension (UI, API, Model, Tool, Theme)."""
+        return "generic"
+    
+    @property
+    def settings(self) -> Dict[str, Any]:
+        """The extension's default settings."""
+        return {}
+    
+    @property
+    def static_dir(self) -> Optional[str]:
+        """The directory containing static files for this extension."""
+        module_dir = os.path.dirname(inspect.getmodule(self).__file__)
+        static_path = os.path.join(module_dir, "static")
+        return static_path if os.path.exists(static_path) else None
+    
+    def initialize(self, context: Dict[str, Any]) -> bool:
+        """Initialize the extension with the given context.
         
-        # Register static files
-        if os.path.exists(self.context.static_path):
-            from starlette.staticfiles import StaticFiles
-            app.mount(
-                f"/extensions/{self.id}/static",
-                StaticFiles(directory=self.context.static_path),
-                name=f"{self.id}_static"
-            )
+        Args:
+            context: A dictionary containing context information for initialization.
             
-            self.logger.info(f"Mounted static files at /extensions/{self.id}/static")
+        Returns:
+            True if initialization was successful, False otherwise.
+        """
+        logger.info(f"Initializing extension: {self.name}")
+        return True
+    
+    def activate(self) -> bool:
+        """Activate the extension.
+        
+        Returns:
+            True if activation was successful, False otherwise.
+        """
+        logger.info(f"Activating extension: {self.name}")
+        return True
+    
+    def deactivate(self) -> bool:
+        """Deactivate the extension.
+        
+        Returns:
+            True if deactivation was successful, False otherwise.
+        """
+        logger.info(f"Deactivating extension: {self.name}")
+        return True
+    
+    def uninstall(self) -> bool:
+        """Perform cleanup when uninstalling the extension.
+        
+        Returns:
+            True if uninstallation was successful, False otherwise.
+        """
+        logger.info(f"Uninstalling extension: {self.name}")
+        return True
 
+class UIExtension(Extension):
+    """Base class for UI extensions."""
+    
+    @property
+    def type(self) -> str:
+        return "ui"
+    
+    @property
+    @abstractmethod
+    def components(self) -> Dict[str, Any]:
+        """A dictionary of UI components provided by this extension."""
+        pass
+    
+    @property
+    def mount_points(self) -> Dict[str, List[str]]:
+        """A dictionary mapping mount points to component IDs."""
+        return {}
 
-class APIExtension(BaseExtension):
-    """Extension that provides API endpoints."""
-    pass
+class APIExtension(Extension):
+    """Base class for API extensions."""
+    
+    @property
+    def type(self) -> str:
+        return "api"
+    
+    @property
+    @abstractmethod
+    def routes(self) -> List[Any]:
+        """A list of API routes provided by this extension."""
+        pass
 
+class ModelAdapter(Extension):
+    """Base class for model adapter extensions."""
+    
+    @property
+    def type(self) -> str:
+        return "model"
+    
+    @abstractmethod
+    def load_model(self) -> Any:
+        """Load the AI model."""
+        pass
+    
+    @abstractmethod
+    def generate(self, prompt: str, params: Dict[str, Any]) -> str:
+        """Generate a response from the model.
+        
+        Args:
+            prompt: The input prompt.
+            params: Generation parameters.
+            
+        Returns:
+            The generated text.
+        """
+        pass
 
-class ModelExtension(BaseExtension):
-    """Extension that provides model adapters."""
+class ToolExtension(Extension):
+    """Base class for tool extensions."""
     
-    # Model information
-    models: List[Dict[str, Any]] = []
+    @property
+    def type(self) -> str:
+        return "tool"
     
-    async def list_models(self) -> List[Dict[str, Any]]:
-        """List available models."""
-        return self.models
-    
-    async def get_model(self, model_id: str) -> Optional[Dict[str, Any]]:
-        """Get information about a specific model."""
-        for model in self.models:
-            if model.get("id") == model_id:
-                return model
-        return None
+    @property
+    @abstractmethod
+    def tools(self) -> Dict[str, Callable]:
+        """A dictionary of tools provided by this extension."""
+        pass
 
+class ThemeExtension(Extension):
+    """Base class for theme extensions."""
+    
+    @property
+    def type(self) -> str:
+        return "theme"
+    
+    @property
+    @abstractmethod
+    def styles(self) -> Dict[str, str]:
+        """A dictionary of style definitions."""
+        pass
+    
+    @property
+    @abstractmethod
+    def theme_name(self) -> str:
+        """The name of the theme."""
+        pass
 
-class ToolExtension(BaseExtension):
-    """Extension that provides tools."""
+def get_extension_class(extension_type: str) -> Type[Extension]:
+    """Get the appropriate extension class based on the type.
     
-    # Tool information
-    tools: List[Dict[str, Any]] = []
-    
-    async def list_tools(self) -> List[Dict[str, Any]]:
-        """List available tools."""
-        return self.tools
-    
-    async def execute_tool(self, tool_id: str, parameters: Dict[str, Any]) -> Any:
-        """Execute a tool."""
-        raise NotImplementedError(f"Tool execution not implemented for {tool_id}")
-
-
-class ThemeExtension(BaseExtension):
-    """Extension that provides themes."""
-    
-    # Theme information
-    themes: List[Dict[str, Any]] = []
-    
-    async def list_themes(self) -> List[Dict[str, Any]]:
-        """List available themes."""
-        return self.themes
-    
-    async def get_theme(self, theme_id: str) -> Optional[Dict[str, Any]]:
-        """Get a specific theme."""
-        for theme in self.themes:
-            if theme.get("id") == theme_id:
-                return theme
-        return None
+    Args:
+        extension_type: The type of extension.
+        
+    Returns:
+        The extension class.
+    """
+    extension_classes = {
+        "ui": UIExtension,
+        "api": APIExtension,
+        "model": ModelAdapter,
+        "tool": ToolExtension,
+        "theme": ThemeExtension,
+        "generic": Extension,
+    }
+    return extension_classes.get(extension_type, Extension)
