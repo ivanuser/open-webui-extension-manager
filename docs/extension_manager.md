@@ -1,153 +1,215 @@
-# Extension Manager Guide
+# Extension Manager
 
-The Extension Manager provides a user-friendly interface for managing extensions in Open WebUI.
+The Extension Manager provides an admin interface for managing extensions in Open WebUI.
 
-## Accessing the Extension Manager
+## Table of Contents
 
-After installation, you can access the Extension Manager through the admin panel:
+- [Overview](#overview)
+- [Installation](#installation)
+- [Using the Extension Manager](#using-the-extension-manager)
+- [Extension Manager API](#extension-manager-api)
+- [Architecture](#architecture)
 
-1. Log in to Open WebUI as an administrator
-2. Go to **Admin > Extensions**
+## Overview
 
-## Features
+The Extension Manager allows you to:
 
-The Extension Manager provides the following features:
+- View installed extensions
+- Enable/disable extensions
+- Install new extensions
+- Configure extension settings
+- Uninstall extensions
 
-### Viewing Installed Extensions
+## Installation
 
-The main page displays all installed extensions with their:
+The Extension Manager can be installed using the provided installation script:
 
-- Name and description
-- Version
+```bash
+# Clone the repository
+git clone https://github.com/open-webui/extension-manager.git
+cd extension-manager
+
+# Run the installer
+python install.py
+```
+
+The installer will:
+
+1. Install required dependencies
+2. Install the extension system as a package
+3. Create an extensions directory in your Open WebUI installation
+4. Link the Extension Manager to the extensions directory
+
+## Using the Extension Manager
+
+After installation, the Extension Manager will be available in the Admin Settings of Open WebUI.
+
+### Viewing Extensions
+
+The Extension Manager displays a list of all installed extensions. Each extension card shows:
+
+- Extension name and version
+- Description
 - Author
-- Status (enabled/disabled)
-- Tags
+- Type (UI, API, Model, Tool, Theme)
+- Status (Active, Inactive, Error, Pending)
+- Installation date and update date
+
+You can filter extensions by:
+
+- Type
+- Status
+- Source
+- Search query
 
 ### Installing Extensions
 
 To install a new extension:
 
-1. Click the **Install Extension** button
-2. Select an extension package (.zip file)
-3. Click **Install**
-
-Extension packages should contain a complete extension directory structure.
+1. Click the "Install Extension" button
+2. Select the installation source:
+   - Remote URL (ZIP file)
+   - Local Directory
+   - Extension Marketplace (coming soon)
+3. Enter the required information for the selected source
+4. Click "Install Extension"
 
 ### Enabling/Disabling Extensions
 
-To enable or disable an extension:
+To enable an extension, click the "Enable" button on the extension card.
 
-1. Find the extension in the list
-2. Toggle the switch next to the extension
+To disable an extension, click the "Disable" button on the extension card.
 
-Disabled extensions will not be loaded when Open WebUI starts.
+### Configuring Extensions
+
+To configure an extension:
+
+1. Click the "Settings" button on the extension card
+2. Modify the extension settings
+3. Click "Save Settings"
 
 ### Uninstalling Extensions
 
 To uninstall an extension:
 
-1. Find the extension in the list
-2. Click the **Delete** button
-3. Confirm the deletion
+1. Click the "Uninstall" button on the extension card
+2. Confirm the uninstallation
 
-Note: Uninstalling an extension will remove all its files and configuration.
+## Extension Manager API
 
-## Example Extensions
+The Extension Manager provides a REST API for managing extensions:
 
-The Extension System includes example extensions:
+### List Extensions
 
-### MCP Connector
+```
+GET /api/extensions
+```
 
-The MCP Connector extension allows connecting to MCP (Model Context Protocol) servers.
+Query Parameters:
+- `types`: Filter by extension types (comma-separated)
+- `status`: Filter by extension status (comma-separated)
+- `sources`: Filter by extension sources (comma-separated)
+- `search`: Search query
+- `page`: Page number for pagination
+- `page_size`: Number of items per page
 
-To use the MCP Connector:
+### Get Extension
 
-1. Navigate to **MCP Servers** in the sidebar
-2. Click **Add Server** to add a new MCP server
-3. Enter the server details:
-   - Name: A friendly name for the server
-   - URL: The base URL of the MCP server (e.g., http://localhost:11434/v1)
-   - API Key: Optional API key for authentication
-   - Description: Optional description of the server
-4. Click **Save** to add the server
-5. Enable the server to make its models available in Open WebUI
+```
+GET /api/extensions/{name}
+```
 
-### Example Extension
+Path Parameters:
+- `name`: The name of the extension
 
-The Example Extension demonstrates basic extension features:
+### Install Extension
 
-1. Navigate to **Example Extension** in the sidebar
-2. Explore the example dashboard
-3. Test the API example
+```
+POST /api/extensions/install
+```
 
-## Troubleshooting
+Request Body:
+```json
+{
+  "source": "remote", // "remote", "local", or "marketplace"
+  "url": "https://example.com/extension.zip", // for remote sources
+  "path": "/path/to/extension", // for local sources
+  "name": "extension-name" // for marketplace sources
+}
+```
 
-### Extension Not Showing Up
+### Perform Extension Action
 
-If an extension does not appear in the Extension Manager:
+```
+POST /api/extensions/action
+```
 
-1. Check the Open WebUI logs for errors
-2. Ensure the extension has a valid `__init__.py` file
-3. Restart Open WebUI
+Request Body:
+```json
+{
+  "action": "enable", // "enable", "disable", or "uninstall"
+  "name": "extension-name"
+}
+```
 
-### Extension Not Working
+### Update Extension Settings
 
-If an extension is installed but not working:
+```
+POST /api/extensions/settings
+```
 
-1. Check if the extension is enabled
-2. Check the Open WebUI logs for errors
-3. Ensure the extension is compatible with your version of Open WebUI
-4. Check if the extension has any dependencies that need to be installed
+Request Body:
+```json
+{
+  "name": "extension-name",
+  "settings": {
+    "setting1": "value1",
+    "setting2": "value2"
+  }
+}
+```
 
-### Cannot Install Extension
+### Discover Extensions
 
-If you cannot install an extension:
+```
+POST /api/extensions/discover
+```
 
-1. Ensure the extension package (.zip) has the correct structure
-2. Check if the extension is already installed
-3. Ensure you have permission to write to the extensions directory
-4. Check the Open WebUI logs for errors
+### Initialize Extensions
 
-## Extension Settings
+```
+POST /api/extensions/initialize
+```
 
-Some extensions may provide settings that can be configured through the Extension Manager:
+## Architecture
 
-1. Find the extension in the list
-2. Click the **Settings** button (if available)
-3. Configure the extension settings
-4. Click **Save** to apply the settings
+The Extension Manager consists of the following components:
 
-## Extension Hooks
+### Backend Components
 
-Extensions can integrate with various parts of Open WebUI through hooks.
+- **Registry**: Manages the lifecycle of extensions
+- **API**: Provides a REST API for managing extensions
+- **Models**: Defines data models for extensions
 
-Hooks provide a way for extensions to:
+### Frontend Components
 
-- Modify UI components
-- Add custom behavior
-- Integrate with other extensions
-- Extend core functionality
+- **ExtensionManager**: Main UI component for the Extension Manager
+- **ExtensionCard**: UI component for displaying an extension
+- **ExtensionForm**: UI component for installing extensions
 
-## Advanced Topics
+### Integration with Open WebUI
 
-### Extension Dependencies
+The Extension Manager integrates with Open WebUI through:
 
-Extensions can depend on other extensions. The Extension Manager will ensure that dependencies are installed and enabled before loading an extension.
+1. **API Integration**: Provides API endpoints for managing extensions
+2. **UI Integration**: Adds UI components to the admin settings
+3. **Hook System**: Uses hooks to integrate with Open WebUI
 
-### Extension Configuration
+### Extensibility
 
-Extensions can store configuration data in the `config` directory. This data is preserved when the extension is updated.
+The Extension Manager can be extended with additional functionality:
 
-### Extension Data
-
-Extensions can store data in the `data` directory. This data is preserved when the extension is updated.
-
-### Extension Lifecycle
-
-Extensions go through the following lifecycle:
-
-1. Installation: When the extension is installed
-2. Initialization: When the extension is loaded
-3. Startup: When the extension is started
-4. Shutdown: When the extension is shut down
-5. Uninstallation: When the extension is uninstalled
+- **Plugin Repository**: Add support for installing extensions from a central repository
+- **Extension Verification**: Add support for verifying extension integrity
+- **Dependency Management**: Add support for managing extension dependencies
+- **Version Management**: Add support for upgrading/downgrading extensions
