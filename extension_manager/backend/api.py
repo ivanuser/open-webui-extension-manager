@@ -4,202 +4,225 @@ API endpoints for the Extension Manager.
 This module provides the API endpoints for managing extensions in Open WebUI.
 """
 
-import os
-import sys
-import json
+from typing import Dict, List, Any, Optional
+from fastapi import APIRouter, HTTPException, Depends, Query
 import logging
-import tempfile
-import shutil
-import zipfile
-from typing import List, Dict, Any, Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from pydantic import BaseModel
+from .models import (
+    ExtensionInfo,
+    ExtensionStatus,
+    ExtensionType,
+    ExtensionSource,
+    ExtensionAction,
+    ExtensionInstall,
+    ExtensionSettings,
+    ExtensionList,
+    ExtensionFilters,
+    ExtensionActionResponse,
+    ExtensionListResponse,
+)
 
-from .registry import ExtensionRegistry
+from .registry import registry
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("extension_manager.api")
+router = APIRouter(prefix="/api/extensions", tags=["extensions"])
 
-# Models
-class Extension(BaseModel):
-    """Model for an extension."""
-    id: str
-    name: str
-    description: str
-    version: str
-    author: str
-    author_url: Optional[str] = None
-    repository_url: Optional[str] = None
-    license: Optional[str] = None
-    tags: List[str] = []
-    enabled: bool = True
-    installed_at: str
-    updated_at: str
-    path: str
-    config: Dict[str, Any] = {}
+logger = logging.getLogger("extension_api")
 
-class ExtensionList(BaseModel):
-    """Model for a list of extensions."""
-    extensions: List[Extension]
-
-class ExtensionToggle(BaseModel):
-    """Model for toggling an extension."""
-    enable: Optional[bool] = None
-
-class ExtensionResponse(BaseModel):
-    """Model for an extension response."""
-    success: bool
-    message: str
-    extension: Optional[Extension] = None
-
-# Initialize extension registry
-registry = None
-
-def get_extension_registry():
-    """Get the extension registry."""
-    global registry
-    if registry is None:
-        # Get the Open WebUI root directory
-        root_dir = os.environ.get("OPEN_WEBUI_ROOT", os.getcwd())
-        registry = ExtensionRegistry(root_dir)
-    return registry
-
-def setup_routes(router: APIRouter):
-    """Set up API routes for the Extension Manager."""
-    
-    @router.get("/", response_model=ExtensionList)
-    async def get_extensions():
-        """Get all installed extensions."""
-        registry = get_extension_registry()
-        extensions = registry.get_extensions()
-        return ExtensionList(extensions=extensions)
-    
-    @router.get("/{extension_id}", response_model=Extension)
-    async def get_extension(extension_id: str):
-        """Get an extension by ID."""
-        registry = get_extension_registry()
-        extension = registry.get_extension_by_id(extension_id)
-        
-        if not extension:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Extension '{extension_id}' not found"
-            )
-        
-        return extension
-    
-    @router.post("/install", response_model=ExtensionResponse)
-    async def install_extension(file: UploadFile = File(...)):
-        """Install an extension from a ZIP file."""
-        registry = get_extension_registry()
-        
-        # Check if file is a ZIP file
-        if not file.filename.endswith(".zip"):
-            raise HTTPException(
-                status_code=400,
-                detail="Extension package must be a ZIP file"
-            )
-        
-        try:
-            # Create a temporary directory
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Save the uploaded file
-                temp_file = os.path.join(temp_dir, file.filename)
-                with open(temp_file, "wb") as f:
-                    content = await file.read()
-                    f.write(content)
-                
-                # Extract the zip file
-                with zipfile.ZipFile(temp_file, "r") as zip_ref:
-                    zip_ref.extractall(temp_dir)
-                
-                # Find the extension directory
-                extension_dir = None
-                for item in os.listdir(temp_dir):
-                    item_path = os.path.join(temp_dir, item)
-                    if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "__init__.py")):
-                        extension_dir = item_path
-                        break
-                
-                if not extension_dir:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Invalid extension package. No extension directory found."
-                    )
-                
-                # Install the extension
-                extension = registry.install_extension(extension_dir)
-                
-                return ExtensionResponse(
-                    success=True,
-                    message=f"Extension '{extension.name}' installed successfully.",
-                    extension=extension
-                )
-        
-        except Exception as e:
-            logger.error(f"Error installing extension: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error installing extension: {str(e)}"
-            )
-    
-    @router.post("/{extension_id}/toggle", response_model=ExtensionResponse)
-    async def toggle_extension(extension_id: str, toggle: ExtensionToggle):
-        """Enable or disable an extension."""
-        registry = get_extension_registry()
-        
-        # Check if extension exists
-        extension = registry.get_extension_by_id(extension_id)
-        if not extension:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Extension '{extension_id}' not found"
-            )
-        
-        # Determine the new enabled state
-        enabled = not extension.enabled if toggle.enable is None else toggle.enable
-        
-        # Toggle the extension
-        updated_extension = registry.toggle_extension(extension_id, enabled)
-        
-        return ExtensionResponse(
-            success=True,
-            message=f"Extension '{extension_id}' {'enabled' if enabled else 'disabled'} successfully.",
-            extension=updated_extension
+@router.get("/", response_model=ExtensionListResponse)
+async def list_extensions(
+    types: List[ExtensionType] = Query(None),
+    status: List[ExtensionStatus] = Query(None),
+    sources: List[ExtensionSource] = Query(None),
+    search: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 10,
+):
+    """List all extensions."""
+    try:
+        # Create filters
+        filters = ExtensionFilters(
+            types=types,
+            status=status,
+            sources=sources,
+            search=search,
         )
-    
-    @router.delete("/{extension_id}", response_model=ExtensionResponse)
-    async def delete_extension(extension_id: str):
-        """Delete an extension."""
-        registry = get_extension_registry()
         
-        # Check if extension exists
-        extension = registry.get_extension_by_id(extension_id)
-        if not extension:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Extension '{extension_id}' not found"
-            )
+        # Get extensions from registry
+        extensions = registry.list_extensions(filters)
         
-        # Don't allow deleting the extension manager itself
-        if extension_id == "extension_manager":
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot delete the Extension Manager itself."
-            )
+        # Paginate results
+        total = len(extensions)
+        start = (page - 1) * page_size
+        end = start + page_size
+        extensions = extensions[start:end]
         
-        # Delete the extension
-        success = registry.delete_extension(extension_id)
-        
-        if not success:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error deleting extension '{extension_id}'"
-            )
-        
-        return ExtensionResponse(
+        return ExtensionListResponse(
             success=True,
-            message=f"Extension '{extension_id}' deleted successfully."
+            message=f"Found {total} extensions",
+            extensions=extensions,
+            total=total,
+            page=page,
+            page_size=page_size,
+            filters=filters,
         )
+    except Exception as e:
+        logger.error(f"Error listing extensions: {e}")
+        raise HTTPException(status_code=500, detail=f"Error listing extensions: {e}")
+
+@router.get("/{name}", response_model=ExtensionActionResponse)
+async def get_extension(name: str):
+    """Get information about an extension."""
+    try:
+        # Get extension info
+        ext_info = registry.get_extension_info(name)
+        
+        if not ext_info:
+            return ExtensionActionResponse(
+                success=False,
+                message=f"Extension {name} not found",
+            )
+        
+        return ExtensionActionResponse(
+            success=True,
+            message=f"Extension {name} found",
+            extension=ext_info,
+        )
+    except Exception as e:
+        logger.error(f"Error getting extension {name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting extension: {e}")
+
+@router.post("/install", response_model=ExtensionActionResponse)
+async def install_extension(install_info: ExtensionInstall):
+    """Install an extension."""
+    try:
+        # Install the extension
+        success, ext_info, message = registry.install_extension(
+            source=install_info.source,
+            url=install_info.url,
+            path=install_info.path,
+            name=install_info.name,
+        )
+        
+        return ExtensionActionResponse(
+            success=success,
+            message=message,
+            extension=ext_info,
+        )
+    except Exception as e:
+        logger.error(f"Error installing extension: {e}")
+        raise HTTPException(status_code=500, detail=f"Error installing extension: {e}")
+
+@router.post("/action", response_model=ExtensionActionResponse)
+async def extension_action(action_info: ExtensionAction):
+    """Perform an action on an extension."""
+    try:
+        # Get extension info
+        ext_info = registry.get_extension_info(action_info.name)
+        
+        if not ext_info:
+            return ExtensionActionResponse(
+                success=False,
+                message=f"Extension {action_info.name} not found",
+            )
+        
+        # Perform the action
+        if action_info.action == "enable":
+            success, message = registry.enable_extension(action_info.name)
+        elif action_info.action == "disable":
+            success, message = registry.disable_extension(action_info.name)
+        elif action_info.action == "uninstall":
+            success, message = registry.uninstall_extension(action_info.name)
+        else:
+            return ExtensionActionResponse(
+                success=False,
+                message=f"Unknown action: {action_info.action}",
+                extension=ext_info,
+            )
+        
+        # Get updated extension info if the action was successful
+        if success and action_info.action != "uninstall":
+            ext_info = registry.get_extension_info(action_info.name)
+        
+        return ExtensionActionResponse(
+            success=success,
+            message=message,
+            extension=ext_info if action_info.action != "uninstall" else None,
+        )
+    except Exception as e:
+        logger.error(f"Error performing action {action_info.action} on extension {action_info.name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error performing action: {e}")
+
+@router.post("/settings", response_model=ExtensionActionResponse)
+async def update_settings(settings_info: ExtensionSettings):
+    """Update extension settings."""
+    try:
+        # Get extension info
+        ext_info = registry.get_extension_info(settings_info.name)
+        
+        if not ext_info:
+            return ExtensionActionResponse(
+                success=False,
+                message=f"Extension {settings_info.name} not found",
+            )
+        
+        # Update settings
+        success, message = registry.update_extension_settings(
+            settings_info.name,
+            settings_info.settings,
+        )
+        
+        # Get updated extension info
+        if success:
+            ext_info = registry.get_extension_info(settings_info.name)
+        
+        return ExtensionActionResponse(
+            success=success,
+            message=message,
+            extension=ext_info,
+        )
+    except Exception as e:
+        logger.error(f"Error updating settings for extension {settings_info.name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating settings: {e}")
+
+@router.post("/discover", response_model=ExtensionListResponse)
+async def discover_extensions():
+    """Discover installed extensions."""
+    try:
+        # Discover extensions
+        extensions = registry.discover()
+        
+        return ExtensionListResponse(
+            success=True,
+            message=f"Discovered {len(extensions)} extensions",
+            extensions=list(extensions.values()),
+            total=len(extensions),
+            page=1,
+            page_size=len(extensions),
+        )
+    except Exception as e:
+        logger.error(f"Error discovering extensions: {e}")
+        raise HTTPException(status_code=500, detail=f"Error discovering extensions: {e}")
+
+@router.post("/initialize", response_model=Dict[str, Any])
+async def initialize_extensions():
+    """Initialize all extensions."""
+    try:
+        # Initialize extensions
+        results = registry.initialize_all()
+        
+        # Count successes and failures
+        successes = sum(1 for success, _ in results.values() if success)
+        failures = len(results) - successes
+        
+        return {
+            "success": failures == 0,
+            "message": f"Initialized {successes} extensions successfully, {failures} failed",
+            "results": {name: {"success": success, "message": message} for name, (success, message) in results.items()},
+        }
+    except Exception as e:
+        logger.error(f"Error initializing extensions: {e}")
+        raise HTTPException(status_code=500, detail=f"Error initializing extensions: {e}")
+
+def get_router() -> APIRouter:
+    """Get the API router."""
+    return router
