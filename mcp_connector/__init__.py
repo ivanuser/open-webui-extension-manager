@@ -1,70 +1,70 @@
 """
-Example Extension for Open WebUI
+MCP Connector Extension for Open WebUI
 
-This is an example extension that demonstrates how to use the Open WebUI extension framework.
-It provides a simple UI dashboard and API endpoints to showcase extension capabilities.
+This extension allows connecting to and managing MCP (Model Context Protocol) servers 
+directly from the Open WebUI interface.
 
-id: example_extension
-name: Example Extension
-description: Example extension for Open WebUI that demonstrates extension capabilities
+id: mcp_connector
+name: MCP Connector
+description: Connect to and manage MCP (Model Context Protocol) servers
 version: 0.1.0
 author: Open WebUI Team
-author_url: https://github.com/open-webui
 repository_url: https://github.com/open-webui/extensions
 license: MIT
-tags: [example, demo, tutorial]
+tags: [mcp, models, ai, llm]
 """
 
 import os
+import sys
 import logging
-from fastapi import APIRouter, Request, FastAPI
+from fastapi import APIRouter, FastAPI
 from starlette.staticfiles import StaticFiles
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("example_extension")
+logger = logging.getLogger("mcp_connector")
 
 # Extension metadata
-__id__ = "example_extension"
-__name__ = "Example Extension"
-__description__ = "Example extension for Open WebUI that demonstrates extension capabilities"
+__id__ = "mcp_connector"
+__name__ = "MCP Connector"
+__description__ = "Connect to and manage MCP (Model Context Protocol) servers"
 __version__ = "0.1.0"
 __author__ = "Open WebUI Team"
+__repository_url__ = "https://github.com/open-webui/extensions"
+__license__ = "MIT"
+__tags__ = ["mcp", "models", "ai", "llm"]
 
 # Create router
-router = APIRouter(prefix="/api/ext/example", tags=["example"])
-
-# Add API routes
-@router.get("/hello")
-async def hello():
-    return {"message": "Hello from Example Extension!"}
-
-@router.get("/counter")
-async def get_counter():
-    return {"count": 42, "message": "This is an example counter endpoint."}
+router = APIRouter(prefix="/api/ext/mcp_connector", tags=["mcp_connector"])
 
 def get_router():
     """Get the extension's API router."""
+    # Import API endpoints
+    from .api import setup_routes
+    
+    # Set up routes
+    setup_routes(router)
+    
     return router
 
 def on_startup(app: FastAPI):
     """Called when the extension starts up."""
-    logger.info("Example extension is starting up")
+    logger.info("MCP Connector is starting up")
     
     # Register static files
     static_dir = os.path.join(os.path.dirname(__file__), "static")
     if os.path.exists(static_dir):
         app.mount(
-            "/extensions/example_extension/static",
+            "/extensions/mcp_connector/static",
             StaticFiles(directory=static_dir),
-            name="example_extension_static"
+            name="mcp_connector_static"
         )
         
-        logger.info(f"Mounted static files at /extensions/example_extension/static")
+        logger.info(f"Mounted static files at /extensions/mcp_connector/static")
     
     # Add script to inject UI components
     @app.middleware("http")
-    async def add_example_script(request, call_next):
+    async def add_mcp_script(request, call_next):
         response = await call_next(request)
         
         # Only modify HTML responses for non-API requests
@@ -76,7 +76,7 @@ def on_startup(app: FastAPI):
                 body += chunk
             
             # Add our script before </body>
-            script_tag = f'<script src="/extensions/example_extension/static/example.js"></script></body>'
+            script_tag = f'<script src="/extensions/mcp_connector/static/mcp_manager.js"></script></body>'
             modified_body = body.replace(b"</body>", script_tag.encode())
             
             # Create new response with modified body
