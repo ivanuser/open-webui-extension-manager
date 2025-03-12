@@ -52,8 +52,6 @@ def install_admin_integration(open_webui_path=None):
     
     logger.info(f"Using Open WebUI path: {open_webui_path}")
     
-    # Instead of relying on a specific directory structure, let's create our own admin plugin
-    
     # For pip-installed version, we'll create an alternative approach
     # We'll create our extension UI page that can be accessed directly
     
@@ -507,7 +505,8 @@ def install_admin_integration(open_webui_path=None):
             f.write(html_content)
         
         # Create a new router file for extensions
-        ext_router_content = """from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
+        # Make sure we don't use triple quotes inside triple quotes (which caused the syntax error)
+        ext_router_content = '''from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, FileResponse
 from typing import List, Dict, Any, Optional
 import os
@@ -521,7 +520,7 @@ router = APIRouter()
 
 @router.get("/manager", response_class=HTMLResponse)
 async def extension_manager():
-    """Return the extension manager UI."""
+    # Return the extension manager UI
     html_path = Path(__file__).parent / "../static/extensions/manager.html"
     if not html_path.exists():
         return HTMLResponse(content="<h1>Extension Manager UI not found</h1>")
@@ -531,13 +530,11 @@ async def extension_manager():
 
 @router.get("/")
 async def list_extensions():
-    """List all installed extensions."""
     # Placeholder - to be implemented with the actual extension system
     return []
 
 # Add more API endpoints for extension management here
-
-"""
+'''
         
         ext_router_path = os.path.join(routers_dir, "extensions.py")
         with open(ext_router_path, "w") as f:
