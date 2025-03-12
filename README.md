@@ -1,18 +1,19 @@
+```markdown
 # Open WebUI Extension System
 
 The Open WebUI Extension System provides a framework for developing, installing, and managing extensions for Open WebUI.
 
 ## Features
 
-- Extension Manager with admin interface
-- API for extensions to integrate with Open WebUI
-- Support for different types of extensions:
-  - UI Extensions
-  - API Extensions
-  - Model Adapters
-  - Tool Extensions
-  - Theme Extensions
-- CLI tool for extension management
+-   **Extension Manager with admin interface:** Easily manage extensions through a user-friendly interface.
+-   **API for extensions to integrate with Open WebUI:** Enables seamless integration and communication between extensions and the core application.
+-   **Support for diverse extension types:**
+    -   UI Extensions: Modify and enhance the user interface.
+    -   API Extensions: Extend the API capabilities.
+    -   Model Adapters: Integrate different machine learning models.
+    -   Tool Extensions: Add new tools and functionalities.
+    -   Theme Extensions: Customize the look and feel of Open WebUI.
+-   **CLI tool for extension management:** Manage extensions directly from the command line.
 
 ## Installation
 
@@ -20,31 +21,44 @@ The Open WebUI Extension System provides a framework for developing, installing,
 
 ```bash
 pip install open-webui-extensions
-Installing from source
-bashCopygit clone https://github.com/yourusername/open-webui-extension-manager.git
+```
+
+### Installing from source
+
+```bash
+git clone [https://github.com/yourusername/open-webui-extension-manager.git](https://github.com/yourusername/open-webui-extension-manager.git)
 cd open-webui-extension-manager
 pip install -e .
-Setting Up
+```
 
-Set up the extension system:
+### Setting Up
 
-bashCopyopenwebui-ext setup
+1.  **Set up the extension system:**
 
-Install the admin integration:
+    ```bash
+    openwebui-ext setup
+    ```
 
-bashCopypython -m open_webui_extensions.install_openwebui
-Usage
-Extension Manager UI
-Access the Extension Manager at:
+2.  **Install the admin integration (for Open WebUI integration):**
 
-/admin/extensions - Integrated with the Open WebUI admin interface
-/api/_extensions/ui - Standalone interface
+    ```bash
+    python -m open_webui_extensions.install_openwebui
+    ```
 
-CLI Tool
-bashCopy# List installed extensions
+## Usage
+
+### Extension Manager UI
+
+-   **Integrated with the Open WebUI admin interface:** `/admin/extensions`
+-   **Standalone interface:** `/api/_extensions/ui`
+
+### CLI Tool
+
+```bash
+# List installed extensions
 openwebui-ext list
 
-# Install an extension
+# Install an extension (from a local path)
 openwebui-ext install /path/to/extension
 
 # Enable an extension
@@ -58,48 +72,68 @@ openwebui-ext uninstall extension_id
 
 # Run the development server
 openwebui-ext dev-server
-Creating Extensions
-See the documentation for information on creating extensions.
-API Reference
-See the API reference for information on the extension API.
-License
+```
+
+## Creating Extensions
+
+See the [documentation](link_to_documentation_here) for information on creating extensions.
+
+## API Reference
+
+See the [API reference](link_to_api_reference_here) for information on the extension API.
+
+## License
+
 MIT
-Copy
+
 ## Phase 9: Integration and Testing
 
 ### Step 1: Test the Extension System
 
-1. Install the extension system:
+1.  **Install the extension system:**
 
-```bash
-cd open-webui-extension-manager
-pip install -e .
+    ```bash
+    cd open-webui-extension-manager
+    pip install -e .
+    ```
 
-Set up the extension system:
+2.  **Set up the extension system:**
 
-bashCopyopenwebui-ext setup
+    ```bash
+    openwebui-ext setup
+    ```
 
-Install the example extensions:
+3.  **Install the example extensions:**
 
-bashCopyopenwebui-ext install example_extensions/hello_world
-openwebui-ext install example_extensions/weather_tool
+    ```bash
+    openwebui-ext install example_extensions/hello_world
+    openwebui-ext install example_extensions/weather_tool
+    ```
 
-Enable the example extensions:
+4.  **Enable the example extensions:**
 
-bashCopyopenwebui-ext enable hello_world
-openwebui-ext enable weather_tool
+    ```bash
+    openwebui-ext enable hello_world
+    openwebui-ext enable weather_tool
+    ```
 
-Run the development server:
+5.  **Run the development server:**
 
-bashCopyopenwebui-ext dev-server
+    ```bash
+    openwebui-ext dev-server
+    ```
 
-Access the Extension Manager UI at http://localhost:8000/api/_extensions/ui/
+6.  **Access the Extension Manager UI:** `http://localhost:8000/api/_extensions/ui/`
 
-Step 2: Integrate with Open WebUI
+### Step 2: Integrate with Open WebUI
 
-Install the admin integration:
+1.  **Install the admin integration:**
 
-bashCopypython -m open_webui_extensions.install_openwebui
+    ```bash
+    python -m open_webui_extensions.install_openwebui
+    ```
 
-Restart Open WebUI.
-Access the Extension Manager at http://localhost:8080/admin/extensions (adjust the port as needed).
+2.  **Restart Open WebUI.**
+
+3.  **Access the Extension Manager:** `http://localhost:8080/admin/extensions` (adjust the port as needed).
+```
