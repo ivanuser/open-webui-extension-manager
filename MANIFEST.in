@@ -1,0 +1,2 @@
+include open_webui_extensions/manager/ui/templates/*
+include open_webui_extensions/manager/static/*
