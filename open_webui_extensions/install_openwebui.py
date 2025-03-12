@@ -3,6 +3,7 @@ import shutil
 import logging
 import argparse
 from pathlib import Path
+import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("open_webui_extensions")
@@ -12,16 +13,22 @@ def install_admin_integration(open_webui_path=None):
     if not open_webui_path:
         # Try to find Open WebUI installation
         possible_paths = [
-            "/app/backend/app",  # Docker path
-            os.path.expanduser("~/open-webui/backend/app"),  # Home directory
-            "/usr/local/lib/python3.9/site-packages/app",  # Pip installation
-            os.path.expanduser("~/Documents/src/open-webui/backend/app"),  # Windows home
-            os.path.expanduser("~/Documents/src/open-webui"),  # Windows direct
-            "C:/Users/ihoner/Documents/src/open-webui",  # Specific Windows path
-            "C:/Users/ihoner/Documents/src/open-webui/backend/app",  # Specific Windows app path
-            os.getcwd(),  # Current directory
-            os.path.join(os.getcwd(), "open-webui"),  # Subfolder in current directory
-            # Add more possible paths
+            # Specific user path provided
+            "/home/ihoner/ai_dev/venv/lib/python3.11/site-packages/open_webui",
+            
+            # General pip installation paths
+            os.path.join(sys.prefix, "lib", "python" + sys.version[:3], "site-packages", "open_webui"),
+            os.path.join(os.path.dirname(os.__file__), "site-packages", "open_webui"),
+            
+            # Docker path
+            "/app/backend/app",
+            
+            # Git clone paths
+            os.path.expanduser("~/open-webui/backend/app"),
+            os.path.expanduser("~/Documents/src/open-webui"),
+            "C:/Users/ihoner/Documents/src/open-webui",
+            os.getcwd(),
+            os.path.join(os.getcwd(), "open-webui"),
         ]
         
         for path in possible_paths:
@@ -37,16 +44,32 @@ def install_admin_integration(open_webui_path=None):
     
     logger.info(f"Using Open WebUI path: {open_webui_path}")
     
-    # Check if this is a valid Open WebUI installation
-    admin_path = os.path.join(open_webui_path, "backend", "app", "frontend", "src", "routes", "admin")
-    if not os.path.exists(admin_path):
-        # Try alternative structure (maybe the path is already pointing to backend/app)
+    # Check for pip-installed structure vs git clone structure
+    is_pip_install = "site-packages" in open_webui_path
+    
+    # Determine the admin path based on installation type
+    if is_pip_install:
+        # For pip-installed version
         admin_path = os.path.join(open_webui_path, "frontend", "src", "routes", "admin")
         if not os.path.exists(admin_path):
-            logger.error(f"Admin interface not found at {admin_path}")
-            logger.error("The specified path does not appear to be a valid Open WebUI installation.")
-            logger.error("Please ensure you're pointing to the root of the Open WebUI repository.")
-            return False
+            # Try alternative structure
+            admin_path = os.path.join(open_webui_path, "backend", "app", "frontend", "src", "routes", "admin")
+    else:
+        # For git clone version
+        admin_path = os.path.join(open_webui_path, "backend", "app", "frontend", "src", "routes", "admin")
+        if not os.path.exists(admin_path):
+            # Try alternative structure
+            admin_path = os.path.join(open_webui_path, "frontend", "src", "routes", "admin")
+    
+    if not os.path.exists(admin_path):
+        logger.error(f"Admin interface not found at {admin_path}")
+        logger.error("Please examine the directory structure of your Open WebUI installation")
+        logger.error(f"Contents of {open_webui_path}:")
+        try:
+            logger.error(", ".join(os.listdir(open_webui_path)))
+        except:
+            logger.error("Could not list directory contents")
+        return False
     
     # Path to admin layout
     layout_file = os.path.join(admin_path, "+layout.svelte")
