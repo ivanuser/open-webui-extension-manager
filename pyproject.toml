@@ -24,4 +24,5 @@ dependencies = [
 openwebui-ext = "open_webui_extensions.cli:main"
 
 [tool.setuptools]
+packages = ["open_webui_extensions"]
 package-data = {"open_webui_extensions.manager" = ["ui/templates/*", "static/*"]}
