@@ -10,9 +10,7 @@ The Extension Manager provides an admin interface for managing extensions in Ope
 - [Extension Manager API](#extension-manager-api)
 - [Architecture](#architecture)
 
-## Overview
-
-The Extension Manager allows you to:
+## Features
 
 - View installed extensions
 - Enable/disable extensions
@@ -20,192 +18,54 @@ The Extension Manager allows you to:
 - Configure extension settings
 - Uninstall extensions
 
-## Installation
+## Accessing the Extension Manager
 
-The Extension Manager can be installed using the provided installation script:
+The Extension Manager is accessible at:
 
-```bash
-# Clone the repository
-git clone https://github.com/open-webui/extension-manager.git
-cd extension-manager
+1. `/admin/extensions` - Integrated with the Open WebUI admin interface
+2. `/api/_extensions/ui` - Standalone interface
 
-# Run the installer
-python install.py
-```
+## Installing Extensions
 
-The installer will:
+Extensions can be installed via:
 
-1. Install required dependencies
-2. Install the extension system as a package
-3. Create an extensions directory in your Open WebUI installation
-4. Link the Extension Manager to the extensions directory
+1. The Extension Manager UI
+   - Click the "Choose File" button in the "Install New Extension" section
+   - Select a ZIP file containing the extension
+   - Click "Upload Extension"
 
-## Using the Extension Manager
+2. The `openwebui-ext` CLI tool
+   ```bash
+   openwebui-ext install /path/to/extension
 
-After installation, the Extension Manager will be available in the Admin Settings of Open WebUI.
+Managing Extensions
+Enabling/Disabling Extensions
 
-### Viewing Extensions
+In the Extension Manager UI, click the "Enable" or "Disable" button for an extension
+Via the CLI:
+# Enable an extension
+openwebui-ext enable extension_id
 
-The Extension Manager displays a list of all installed extensions. Each extension card shows:
+# Disable an extension
+openwebui-ext disable extension_id
 
-- Extension name and version
-- Description
-- Author
-- Type (UI, API, Model, Tool, Theme)
-- Status (Active, Inactive, Error, Pending)
-- Installation date and update date
+Uninstalling Extensions
 
-You can filter extensions by:
+In the Extension Manager UI, click the "Uninstall" button for an extension
+Via the CLI:
+openwebui-ext uninstall extension_id
 
-- Type
-- Status
-- Source
-- Search query
+Configuring Extensions
 
-### Installing Extensions
+In the Extension Manager UI, click the "Settings" button for an extension
+Extension settings are specific to each extension
 
-To install a new extension:
+Extension Directory
+Extensions are stored in:
 
-1. Click the "Install Extension" button
-2. Select the installation source:
-   - Remote URL (ZIP file)
-   - Local Directory
-   - Extension Marketplace (coming soon)
-3. Enter the required information for the selected source
-4. Click "Install Extension"
+~/.openwebui/extensions - User extensions
 
-### Enabling/Disabling Extensions
 
-To enable an extension, click the "Enable" button on the extension card.
-
-To disable an extension, click the "Disable" button on the extension card.
-
-### Configuring Extensions
-
-To configure an extension:
-
-1. Click the "Settings" button on the extension card
-2. Modify the extension settings
-3. Click "Save Settings"
-
-### Uninstalling Extensions
-
-To uninstall an extension:
-
-1. Click the "Uninstall" button on the extension card
-2. Confirm the uninstallation
-
-## Extension Manager API
-
-The Extension Manager provides a REST API for managing extensions:
-
-### List Extensions
-
-```
-GET /api/extensions
-```
-
-Query Parameters:
-- `types`: Filter by extension types (comma-separated)
-- `status`: Filter by extension status (comma-separated)
-- `sources`: Filter by extension sources (comma-separated)
-- `search`: Search query
-- `page`: Page number for pagination
-- `page_size`: Number of items per page
-
-### Get Extension
-
-```
-GET /api/extensions/{name}
-```
-
-Path Parameters:
-- `name`: The name of the extension
-
-### Install Extension
-
-```
-POST /api/extensions/install
-```
-
-Request Body:
-```json
-{
-  "source": "remote", // "remote", "local", or "marketplace"
-  "url": "https://example.com/extension.zip", // for remote sources
-  "path": "/path/to/extension", // for local sources
-  "name": "extension-name" // for marketplace sources
-}
-```
-
-### Perform Extension Action
-
-```
-POST /api/extensions/action
-```
-
-Request Body:
-```json
-{
-  "action": "enable", // "enable", "disable", or "uninstall"
-  "name": "extension-name"
-}
-```
-
-### Update Extension Settings
-
-```
-POST /api/extensions/settings
-```
-
-Request Body:
-```json
-{
-  "name": "extension-name",
-  "settings": {
-    "setting1": "value1",
-    "setting2": "value2"
-  }
-}
-```
-
-### Discover Extensions
-
-```
-POST /api/extensions/discover
-```
-
-### Initialize Extensions
-
-```
-POST /api/extensions/initialize
-```
-
-## Architecture
-
-The Extension Manager consists of the following components:
-
-### Backend Components
-
-- **Registry**: Manages the lifecycle of extensions
-- **API**: Provides a REST API for managing extensions
-- **Models**: Defines data models for extensions
-
-### Frontend Components
-
-- **ExtensionManager**: Main UI component for the Extension Manager
-- **ExtensionCard**: UI component for displaying an extension
-- **ExtensionForm**: UI component for installing extensions
-
-### Integration with Open WebUI
-
-The Extension Manager integrates with Open WebUI through:
-
-1. **API Integration**: Provides API endpoints for managing extensions
-2. **UI Integration**: Adds UI components to the admin settings
-3. **Hook System**: Uses hooks to integrate with Open WebUI
-
-### Extensibility
 
 The Extension Manager can be extended with additional functionality:
 
